@@ -18,10 +18,10 @@ var @"fn": struct {
 } = undefined;
 
 pub fn allocator() std.mem.Allocator {
-    const pad_align = if (builtin.mode == .Debug) 1 else 0;
-
     const VTable = struct {
-        inline fn offseted_ptr_ptr(aligned_ptr: ?*anyopaque) *?*anyopaque {
+        const pad_align = if (builtin.mode == .Debug) 1 else 0;
+
+        inline fn ptrOffsetedPtr(aligned_ptr: ?*anyopaque) *?*anyopaque {
             const aligned_addr = @intFromPtr(aligned_ptr);
             const offseted_addr = aligned_addr -% @sizeOf(?*anyopaque);
             return @ptrFromInt(offseted_addr);
@@ -41,7 +41,7 @@ pub fn allocator() std.mem.Allocator {
             const aligned_addr = raw_addr + (alignment_bytes - raw_addr % alignment_bytes);
             const aligned_ptr: ?*anyopaque = @ptrFromInt(aligned_addr);
 
-            offseted_ptr_ptr(aligned_ptr).* = raw_ptr;
+            ptrOffsetedPtr(aligned_ptr).* = raw_ptr;
 
             return @ptrCast(aligned_ptr);
         }
@@ -67,23 +67,23 @@ pub fn allocator() std.mem.Allocator {
             const aligned_ptr: ?*anyopaque = @ptrCast(memory.ptr);
             const raw_ptr = switch (alignment_bytes <= c_alignment_bytes) {
                 true => aligned_ptr,
-                false => offseted_ptr_ptr(aligned_ptr).*,
+                false => ptrOffsetedPtr(aligned_ptr).*,
             };
 
             @"fn".mem_free2(raw_ptr, pad_align);
         }
+    };
 
-        const vtable = std.mem.Allocator.VTable{
-            .alloc = alloc,
-            .resize = resize,
-            .remap = remap,
-            .free = free,
-        };
+    const vtable = std.mem.Allocator.VTable{
+        .alloc = VTable.alloc,
+        .resize = VTable.resize,
+        .remap = VTable.remap,
+        .free = VTable.free,
     };
 
     return .{
         .ptr = undefined,
-        .vtable = &VTable.vtable,
+        .vtable = &vtable,
     };
 }
 
