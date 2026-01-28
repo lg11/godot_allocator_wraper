@@ -19,6 +19,7 @@ pub const VTable = struct {
 	resize: *const fn (*anyopaque, memory: []u8, alignment: Alignment, new_len: usize, ret_addr: usize) bool,
 	remap: *const fn (*anyopaque, memory: []u8, alignment: Alignment, new_len: usize, ret_addr: usize) ?[*]u8,
 	free: *const fn (*anyopaque, memory: []u8, alignment: Alignment, ret_addr: usize) void,
+}
 ```
 
 `alignment`参数是c系语言里没有的，zig的分配器可以更精确地控制内存对齐。
