@@ -172,7 +172,7 @@ const VTable = struct {
 			false => offseted_ptr_ptr(aligned_ptr).*,
 		};
 
-		@"fn".mem_free2(raw_ptr, pad_align);
+		mem_free2(raw_ptr, pad_align);
 	}
 
     ...
