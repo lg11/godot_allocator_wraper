@@ -180,4 +180,4 @@ const VTable = struct {
 
 逻辑也很简单，对于手工对齐过的指针，通过`offseted_ptr_ptr`反查原始地址来进行释放。
 
-最后还写一个反向的包装，把`std.heap.DebugAllocator`包装成`mem_alloc2`/`mem_realloc2`/`mem_free2`用来进行测试。这个就不详细展开说明了，参看完整的源代码（[github链接](https://github.com/lg11/godot_allocator_wraper)）即可。
+最后还写了一个反向的包装，把`std.heap.DebugAllocator`包装成`mem_alloc2`/`mem_realloc2`/`mem_free2`用来进行测试。这个就不详细展开说明了，参看完整的源代码（[github链接](https://github.com/lg11/godot_allocator_wraper)）即可。
