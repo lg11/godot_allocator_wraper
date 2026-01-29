@@ -2,16 +2,18 @@ const builtin = @import("builtin");
 const std = @import("std");
 
 const wraper = struct {
+    pub const Bool = enum(u8) { true = 1, false = 0 };
+
     const c_alignment_bytes = switch (builtin.target.ptrBitWidth()) {
         64 => 16,
         32 => 8,
         else => unreachable,
     };
-    const pad_align = if (builtin.mode == .Debug) 1 else 0;
+    const pad_align: Bool = if (builtin.mode == .Debug) .true else .false;
 
-    const MemAlloc2 = fn (usize, u8) callconv(.c) ?*anyopaque;
-    const MemRealloc2 = fn (?*anyopaque, usize, u8) callconv(.c) ?*anyopaque;
-    const MemFree2 = fn (?*anyopaque, u8) callconv(.c) void;
+    const MemAlloc2 = fn (usize, Bool) callconv(.c) ?*anyopaque;
+    const MemRealloc2 = fn (?*anyopaque, usize, Bool) callconv(.c) ?*anyopaque;
+    const MemFree2 = fn (?*anyopaque, Bool) callconv(.c) void;
 
     var mem_alloc2: *const MemAlloc2 = undefined;
     var mem_realloc2: *const MemRealloc2 = undefined;
@@ -110,14 +112,14 @@ const test_wraper = struct {
         return internal.debug_allocator.deinit();
     }
 
-    pub fn alloc(bytes: usize, _: u8) callconv(.c) ?*anyopaque {
+    pub fn alloc(bytes: usize, _: wraper.Bool) callconv(.c) ?*anyopaque {
         const slice = internal.allocator.alloc(u8, bytes) catch unreachable;
         internal.map.put(internal.allocator, slice.ptr, slice.len) catch unreachable;
 
         return slice.ptr;
     }
 
-    pub fn realloc(ptr: ?*anyopaque, bytes: usize, _: u8) callconv(.c) ?*anyopaque {
+    pub fn realloc(ptr: ?*anyopaque, bytes: usize, _: wraper.Bool) callconv(.c) ?*anyopaque {
         const old_len = internal.map.fetchRemove(ptr).?.value;
         const old_slice = @as([*]u8, @ptrCast(ptr))[0..old_len];
 
@@ -127,7 +129,7 @@ const test_wraper = struct {
         return slice.ptr;
     }
 
-    pub fn free(ptr: ?*anyopaque, _: u8) callconv(.c) void {
+    pub fn free(ptr: ?*anyopaque, _: wraper.Bool) callconv(.c) void {
         const len = internal.map.fetchRemove(ptr).?.value;
         const slice = @as([*]u8, @ptrCast(ptr))[0..len];
 
@@ -157,13 +159,13 @@ test "TestFn check leak" {
     // test normal
     initTest();
 
-    const p1: [*]u8 = @ptrCast(wraper.mem_alloc2(8, 0));
+    const p1: [*]u8 = @ptrCast(wraper.mem_alloc2(8, .false));
     p1[0] = 0;
     p1[7] = 7;
-    const p2: [*]u8 = @ptrCast(wraper.mem_realloc2(p1, 16, 0));
+    const p2: [*]u8 = @ptrCast(wraper.mem_realloc2(p1, 16, .false));
     try std.testing.expectEqual(0, p2[0]);
     try std.testing.expectEqual(7, p2[7]);
-    wraper.mem_free2(p2, 0);
+    wraper.mem_free2(p2, .false);
 
     try std.testing.expectEqual(deinitTest(), .ok);
 }
