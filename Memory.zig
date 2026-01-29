@@ -1,9 +1,13 @@
 const builtin = @import("builtin");
 const std = @import("std");
 
-const wraper = struct {
-    pub const Bool = enum(u8) { true = 1, false = 0 };
+pub const Bool = enum(u8) { true = 1, false = 0 };
 
+pub const MemAlloc2 = *const fn (usize, Bool) callconv(.c) ?*anyopaque;
+pub const MemRealloc2 = *const fn (?*anyopaque, usize, Bool) callconv(.c) ?*anyopaque;
+pub const MemFree2 = *const fn (?*anyopaque, Bool) callconv(.c) void;
+
+const wraper = struct {
     const c_alignment_bytes = switch (builtin.target.ptrBitWidth()) {
         64 => 16,
         32 => 8,
@@ -11,13 +15,9 @@ const wraper = struct {
     };
     const pad_align: Bool = if (builtin.mode == .Debug) .true else .false;
 
-    const MemAlloc2 = fn (usize, Bool) callconv(.c) ?*anyopaque;
-    const MemRealloc2 = fn (?*anyopaque, usize, Bool) callconv(.c) ?*anyopaque;
-    const MemFree2 = fn (?*anyopaque, Bool) callconv(.c) void;
-
-    var mem_alloc2: *const MemAlloc2 = undefined;
-    var mem_realloc2: *const MemRealloc2 = undefined;
-    var mem_free2: *const MemFree2 = undefined;
+    var mem_alloc2: MemAlloc2 = undefined;
+    var mem_realloc2: MemRealloc2 = undefined;
+    var mem_free2: MemFree2 = undefined;
 
     inline fn ptrOffsetedPtr(aligned_ptr: ?*anyopaque) *?*anyopaque {
         const aligned_addr = @intFromPtr(aligned_ptr);
@@ -83,9 +83,9 @@ pub const allocator = std.mem.Allocator{
 };
 
 pub fn init(
-    mem_alloc2: *const wraper.MemAlloc2,
-    mem_realloc2: *const wraper.MemRealloc2,
-    mem_free2: *const wraper.MemFree2,
+    mem_alloc2: MemAlloc2,
+    mem_realloc2: MemRealloc2,
+    mem_free2: MemFree2,
 ) void {
     wraper.mem_alloc2 = mem_alloc2;
     wraper.mem_realloc2 = mem_realloc2;
@@ -112,14 +112,14 @@ const test_wraper = struct {
         return internal.debug_allocator.deinit();
     }
 
-    pub fn alloc(bytes: usize, _: wraper.Bool) callconv(.c) ?*anyopaque {
+    pub fn alloc(bytes: usize, _: Bool) callconv(.c) ?*anyopaque {
         const slice = internal.allocator.alloc(u8, bytes) catch unreachable;
         internal.map.put(internal.allocator, slice.ptr, slice.len) catch unreachable;
 
         return slice.ptr;
     }
 
-    pub fn realloc(ptr: ?*anyopaque, bytes: usize, _: wraper.Bool) callconv(.c) ?*anyopaque {
+    pub fn realloc(ptr: ?*anyopaque, bytes: usize, _: Bool) callconv(.c) ?*anyopaque {
         const old_len = internal.map.fetchRemove(ptr).?.value;
         const old_slice = @as([*]u8, @ptrCast(ptr))[0..old_len];
 
@@ -129,7 +129,7 @@ const test_wraper = struct {
         return slice.ptr;
     }
 
-    pub fn free(ptr: ?*anyopaque, _: wraper.Bool) callconv(.c) void {
+    pub fn free(ptr: ?*anyopaque, _: Bool) callconv(.c) void {
         const len = internal.map.fetchRemove(ptr).?.value;
         const slice = @as([*]u8, @ptrCast(ptr))[0..len];
 
