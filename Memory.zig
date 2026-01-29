@@ -72,7 +72,7 @@ const wraper = struct {
     }
 };
 
-const allocator = std.mem.Allocator{
+pub const allocator = std.mem.Allocator{
     .ptr = undefined,
     .vtable = &.{
         .alloc = wraper.alloc,
